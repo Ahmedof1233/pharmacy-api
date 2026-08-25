@@ -101,8 +101,8 @@ const getPatientHandler = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'حدث خطأ في الخادم.' });
+        console.error("DETAILED SERVER ERROR:", error); // اطبع الخطأ كامل في السجلات
+        res.status(500).json({ success: false, message: error.message }); // اعرض رسالة الخطأ الحقيقية مؤقتاً لنراها
     }
 };
 
