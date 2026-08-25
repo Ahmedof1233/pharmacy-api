@@ -127,6 +127,10 @@ app.get('/', (req, res) => {
     res.send('Pharmacy API is running perfectly!');
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 السيرفر يعمل الآن على الرابط: http://localhost:${PORT}`);
-});
+// تشغيل السيرفر محلياً فقط، وتصديره لـ Vercel عند الرفع
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 السيرفر يعمل الآن على الرابط: http://localhost:${PORT}`);
+    });
+}
+module.exports = app;
