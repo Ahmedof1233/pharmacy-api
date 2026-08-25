@@ -101,8 +101,9 @@ const getPatientHandler = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("DETAILED SERVER ERROR:", error); // اطبع الخطأ كامل في السجلات
-        res.status(500).json({ success: false, message: error.message }); // اعرض رسالة الخطأ الحقيقية مؤقتاً لنراها
+        console.error("DETAILED SERVER ERROR:", error);
+        // إرسال رسالة الخطأ الحقيقية من قاعدة البيانات للمتصفح لنراها فوراً
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
