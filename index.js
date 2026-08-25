@@ -10,8 +10,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// إعداد الاتصال بقاعدة البيانات مع تفعيل الـ SSL الإلزامي لـ TiDB Cloud
 const pool = mysql.createPool({
     uri: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: true
+    },
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -65,8 +69,9 @@ const addPatientHandler = async (req, res) => {
         }
         res.status(201).json({ success: true, message: 'تم إضافة المريض وأدويته بنجاح' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'حدث خطأ أثناء إضافة المريض' });
+        console.error("DETAILED ADD PATIENT ERROR:", error);
+        // إرسال الخطأ الحقيقي للمتصفح لنراه بوضوح
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -101,8 +106,7 @@ const getPatientHandler = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("DETAILED SERVER ERROR:", error);
-        // إرسال رسالة الخطأ الحقيقية من قاعدة البيانات للمتصفح لنراها فوراً
+        console.error("DETAILED GET ERROR:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -111,21 +115,17 @@ const getPatientHandler = async (req, res) => {
 // الحل السحري لتخطي كل مشاكل مسارات Vercel (Invincible Routing)
 // ==========================================================
 
-// مسارات إضافة المريض (سيصطاد الطلب مهما كان المسار)
 app.post('/api/patients', addPatientHandler);
 app.post('/patients', addPatientHandler);
 app.post('/', addPatientHandler); 
 
-// مسارات جلب بيانات المريض
 app.get('/api/patient/:qr_uuid', getPatientHandler);
 app.get('/patient/:qr_uuid', getPatientHandler);
 
-// التأكد من عمل السيرفر
 app.get('/', (req, res) => {
     res.send('Pharmacy API is running perfectly!');
 });
 
-// تشغيل السيرفر
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 }
