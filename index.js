@@ -10,6 +10,20 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// ✅ حماية مبكرة: إذا لم تُضف DATABASE_URL في Vercel ستظهر رسالة واضحة
+if (!process.env.DATABASE_URL) {
+    console.error('FATAL ERROR: DATABASE_URL environment variable is not set!');
+    // لا نوقف السيرفر، بل نُعيد خطأً واضحاً لكل طلب
+    app.use((req, res) => {
+        res.status(500).json({
+            success: false,
+            message: 'Server configuration error: DATABASE_URL is not set in Vercel environment variables.'
+        });
+    });
+    module.exports = app;
+    // لا نُكمل تهيئة قاعدة البيانات
+} else {
+
 // إعداد الاتصال بقاعدة البيانات مع تفعيل الـ SSL الإلزامي لـ TiDB Cloud
 const pool = mysql.createPool({
     uri: process.env.DATABASE_URL,
@@ -20,6 +34,7 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0
 });
+
 
 async function initializeDatabase() {
     try {
@@ -130,3 +145,5 @@ if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 }
 module.exports = app;
+
+} // end of DATABASE_URL guard
