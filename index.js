@@ -2,6 +2,55 @@ require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
+const https = require('https');
+const http = require('http');
+
+// ============================================
+// دالة إرسال بيانات المريض لـ Google Sheets
+// ============================================
+async function sendToGoogleSheets(patientData) {
+  const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.log('⚠️  GOOGLE_SHEETS_WEBHOOK_URL غير محدد - تخطي الإرسال للشيت');
+    return;
+  }
+
+  try {
+    const payload = JSON.stringify(patientData);
+    const url = new URL(webhookUrl);
+    const isHttps = url.protocol === 'https:';
+    const lib = isHttps ? https : http;
+
+    await new Promise((resolve, reject) => {
+      const options = {
+        hostname: url.hostname,
+        path: url.pathname + url.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      };
+      const req = lib.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          console.log('✅ تم الإرسال لـ Google Sheets:', data);
+          resolve(data);
+        });
+      });
+      req.on('error', (err) => {
+        console.error('❌ خطأ في الإرسال لـ Google Sheets:', err.message);
+        resolve(); // لا نوقف العملية إذا فشل الشيت
+      });
+      req.write(payload);
+      req.end();
+    });
+  } catch (err) {
+    console.error('❌ خطأ في sendToGoogleSheets:', err.message);
+    // نتجاهل الخطأ ولا نوقف الـ response
+  }
+}
 
 const app = express();
 // السماح لجميع الروابط بالاتصال (لتخطي أي مشكلة CORS)
@@ -82,6 +131,19 @@ const addPatientHandler = async (req, res) => {
                 );
             }
         }
+        // ✅ إرسال بيانات المريض لـ Google Sheets تلقائياً
+        const baseUrl = process.env.FRONTEND_URL || 'https://pharmacy-app-iota.vercel.app';
+        const patientUrl = `${baseUrl}/patient/${qr_uuid}`;
+        
+        // لا ننتظر رد الشيت حتى لا نبطئ الـ response
+        sendToGoogleSheets({
+            full_name,
+            phone_number,
+            qr_uuid,
+            patient_url: patientUrl,
+            medications: medications || []
+        });
+
         res.status(201).json({ success: true, message: 'تم إضافة المريض وأدويته بنجاح' });
     } catch (error) {
         console.error("DETAILED ADD PATIENT ERROR:", error);
@@ -89,6 +151,7 @@ const addPatientHandler = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
 
 // =====================================
 // 2. الدالة المسؤولة عن جلب المريض
